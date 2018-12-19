@@ -14,13 +14,14 @@ import java.util.List;
 
 import static android.content.Context.MODE_PRIVATE;
 
-public class DayFragment extends Fragment implements android.support.v4.app.LoaderManager.LoaderCallbacks<List<SingleDay>>{
+public class DayFragment extends Fragment implements android.support.v4.app.LoaderManager.LoaderCallbacks<String>{
 
     private String mDay;
     private TimeTableAdapter mAdapter;
     private ListView listView;
     public String branchPreference;
     private static final String TIMETABLE_URL = "https://timetable-grobo.firebaseio.com/.json";
+    private String mJsonResponse;
 
     public static DayFragment newInstance(int page){
         Bundle args = new Bundle();
@@ -55,23 +56,16 @@ public class DayFragment extends Fragment implements android.support.v4.app.Load
         }
 
         branchPreference = getContext().getSharedPreferences("PREFERENCE", MODE_PRIVATE).getString("branchPreference", "").toLowerCase();
+
+        LoaderManager loaderManager = android.support.v4.app.LoaderManager.getInstance(this);
+        loaderManager.initLoader(1, null, this);
+
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.timetable_list, container, false);
-
-        listView = rootView.findViewById(R.id.timetable_list_view);
-
-        List<SingleDay> singleDayList = new ArrayList<SingleDay>();
-
-        mAdapter = new TimeTableAdapter(getActivity(), R.layout.single_day_item, singleDayList);
-
-        listView.setAdapter(mAdapter);
-
-        LoaderManager loaderManager = android.support.v4.app.LoaderManager.getInstance(this);
-        loaderManager.initLoader(1, null, this);
 
         return rootView;
     }
@@ -84,23 +78,30 @@ public class DayFragment extends Fragment implements android.support.v4.app.Load
 
 
     @Override
-    public Loader<List<SingleDay>> onCreateLoader(int i, Bundle bundle) {
+    public Loader<String> onCreateLoader(int i, Bundle bundle) {
 
-        return new TimetableLoader(getContext(), TIMETABLE_URL, branchPreference, mDay);
+        return new TimetableLoader(getContext(), TIMETABLE_URL);
     }
 
     @Override
-    public void onLoaderReset(Loader<List<SingleDay>> loader) {
-        mAdapter.clear();
+    public void onLoaderReset(Loader<String> loader) {
     }
 
     @Override
-    public void onLoadFinished(Loader<List<SingleDay>> loader, List<SingleDay> singleDayList) {
-        mAdapter.clear();
+    public void onLoadFinished(Loader<String> loader, String jsonResponse) {
+        mJsonResponse = jsonResponse;
+        extractData(jsonResponse);
+    }
 
-        if (singleDayList != null && !singleDayList.isEmpty()){
-            mAdapter.addAll(singleDayList);
-        }
+    private void extractData(String jsonResponse){
+        listView = getView().findViewById(R.id.timetable_list_view);
+
+        List<SingleDay> singleDayList;
+        singleDayList = QueryUtils.extractTimetable(jsonResponse, branchPreference, mDay);
+
+        mAdapter = new TimeTableAdapter(getActivity(), R.layout.single_day_item, singleDayList);
+
+        listView.setAdapter(mAdapter);
 
     }
 
